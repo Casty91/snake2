@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake Battle Online - Multiplayer</title>
+  <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      font-family: 'Orbitron', sans-serif;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, #00ff88, #00d9ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.3em;
+      font-weight: 900;
+      text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+    }
+
+    .connection-screen {
+      background: rgba(0, 0, 0, 0.6);
+      border: 3px solid rgba(0, 217, 255, 0.5);
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .connection-screen.hidden {
+      display: none;
+    }
+
+    .connection-screen h2 {
+      font-size: 1.5rem;
+      color: #00d9ff;
+      margin-bottom: 20px;
+      letter-spacing: 0.15em;
+    }
+
+    .connection-screen p {
+      color: #aaa;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #00d9ff, #00ff88);
+      color: #0a0a12;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-transform: uppercase;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+    }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #00d9ff;
+    }
+
+    .input-group {
+      margin: 20px 0;
+    }
+
+    .input-group input {
+      font-family: inherit;
+      font-size: 1.2rem;
+      padding: 12px 20px;
+      border: 2px solid rgba(0, 217, 255, 0.5);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #00ff88;
+      text-align: center;
+      letter-spacing: 0.2em;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #00ff88;
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    }
+
+    .room-code {
+      font-size: 2rem;
+      color: #00ff88;
+      background: rgba(0, 255, 136, 0.1);
+      padding: 15px 30px;
+      border-radius: 8px;
+      letter-spacing: 0.3em;
+      margin: 20px 0;
+      border: 2px solid #00ff88;
+      font-weight: 900;
+    }
+
+    .status-message {
+      color: #ffd93d;
+      font-size: 0.9rem;
+      margin-top: 15px;
+      min-height: 20px;
+    }
+
+    .game-container {
+      display: flex;
+      gap: 30px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .game-container.hidden {
+      display: none;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .scoreboard.hidden {
+      display: none;
+    }
+
+    .player-panel {
+      background: rgba(0, 0, 0, 0.5);
+      border: 3px solid;
+      border-radius: 12px;
+      padding: 20px;
+      min-width: 200px;
+      text-align: center;
+      box-shadow: 0 0 20px;
+    }
+
+    .player-panel.p1 {
+      border-color: #00ff88;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    }
+
+    .player-panel.p2 {
+      border-color: #ff006e;
+      box-shadow: 0 0 20px rgba(255, 0, 110, 0.3);
+    }
+
+    .player-panel h2 {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      letter-spacing: 0.2em;
+    }
+
+    .player-panel.p1 h2 {
+      color: #00ff88;
+    }
+
+    .player-panel.p2 h2 {
+      color: #ff006e;
+    }
+
+    .player-panel .score {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 10px currentColor;
+    }
+
+    .player-panel .role {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    .player-panel .controls {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    .player-panel kbd {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.7rem;
+      display: inline-block;
+      margin: 2px;
+    }
+
+    #game-canvas {
+      display: block;
+      border: 4px solid rgba(0, 217, 255, 0.5);
+      border-radius: 8px;
+      background: #0a0a12;
+      box-shadow: 0 0 50px rgba(0, 217, 255, 0.3);
+    }
+
+    .canvas-wrapper {
+      position: relative;
+    }
+
+    .game-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      z-index: 10;
+      backdrop-filter: blur(5px);
+    }
+
+    .game-overlay.visible {
+      display: flex;
+    }
+
+    .game-overlay h2 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      letter-spacing: 0.2em;
+    }
+
+    .game-overlay.winner-p1 h2 {
+      color: #00ff88;
+      text-shadow: 0 0 30px #00ff88;
+    }
+
+    .game-overlay.winner-p2 h2 {
+      color: #ff006e;
+      text-shadow: 0 0 30px #ff006e;
+    }
+
+    .game-overlay.draw h2 {
+      color: #ffd93d;
+      text-shadow: 0 0 30px #ffd93d;
+    }
+
+    .game-overlay.disconnected h2 {
+      color: #ff4757;
+      text-shadow: 0 0 30px #ff4757;
+    }
+
+    .game-overlay p {
+      margin-bottom: 30px;
+      font-size: 1.2rem;
+      color: #ccc;
+    }
+
+    .instructions {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #888;
+      max-width: 600px;
+    }
+
+    .instructions.hidden {
+      display: none;
+    }
+
+    .instructions kbd {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .connection-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 2px solid;
+      font-size: 0.8rem;
+      display: none;
+    }
+
+    .connection-status.connected {
+      display: block;
+      border-color: #00ff88;
+      color: #00ff88;
+    }
+
+    .connection-status.disconnected {
+      display: block;
+      border-color: #ff4757;
+      color: #ff4757;
+    }
+  </style>
+</head>
+<body>
+  <h1>SNAKE BATTLE ONLINE</h1>
+
+  <div class="connection-status" id="connection-status">
+    🟢 Connesso
+  </div>
+
+  <!-- Schermata di connessione -->
+  <div class="connection-screen" id="main-menu">
+    <h2>MODALITÀ MULTIPLAYER</h2>
+    <p>Scegli come vuoi giocare:</p>
+    <div class="btn-group">
+      <button class="btn" id="host-btn">Crea Partita</button>
+      <button class="btn secondary" id="join-btn">Unisciti</button>
+    </div>
+  </div>
+
+  <!-- Schermata Host -->
+  <div class="connection-screen hidden" id="host-screen">
+    <h2>CREA PARTITA</h2>
+    <p>Condividi questo codice con il tuo amico:</p>
+    <div class="room-code" id="room-code">---</div>
+    <p style="font-size: 0.85rem; color: #888;">In attesa del secondo giocatore...</p>
+    <div class="status-message" id="host-status"></div>
+    <button class="btn secondary" id="cancel-host-btn">Annulla</button>
+  </div>
+
+  <!-- Schermata Join -->
+  <div class="connection-screen hidden" id="join-screen">
+    <h2>UNISCITI A PARTITA</h2>
+    <p>Inserisci il codice della partita:</p>
+    <div class="input-group">
+      <input type="text" id="room-code-input" placeholder="ABC123" maxlength="6" />
+    </div>
+    <div class="status-message" id="join-status"></div>
+    <div class="btn-group">
+      <button class="btn" id="connect-btn">Connetti</button>
+      <button class="btn secondary" id="cancel-join-btn">Annulla</button>
+    </div>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="scoreboard hidden" id="scoreboard">
+    <div class="player-panel p1">
+      <h2>PLAYER 1</h2>
+      <div class="score" id="score-p1">0</div>
+      <div class="role" id="role-p1">HOST</div>
+      <div class="controls">
+        <div><kbd>↑</kbd> Su</div>
+        <div><kbd>←</kbd> Sinistra &nbsp; <kbd>→</kbd> Destra</div>
+        <div><kbd>↓</kbd> Giù</div>
+      </div>
+    </div>
+
+    <div class="player-panel p2">
+      <h2>PLAYER 2</h2>
+      <div class="score" id="score-p2">0</div>
+      <div class="role" id="role-p2">GUEST</div>
+      <div class="controls">
+        <div><kbd>↑</kbd> Su</div>
+        <div><kbd>←</kbd> Sinistra &nbsp; <kbd>→</kbd> Destra</div>
+        <div><kbd>↓</kbd> Giù</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Canvas -->
+  <div class="game-container hidden" id="game-container">
+    <div class="canvas-wrapper">
+      <canvas id="game-canvas" width="900" height="600"></canvas>
+      <div id="game-over" class="game-overlay">
+        <h2 id="winner-text">GAME OVER</h2>
+        <p id="winner-detail"></p>
+        <button class="btn" id="restart-btn">Torna al Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions hidden" id="instructions">
+    <p>🎮 Due serpenti, un solo cibo! Chi mangia di più vince!</p>
+    <p>🎯 Usa le <kbd>frecce direzionali</kbd> per muovere il tuo serpente</p>
+    <p>⚠️ Attenzione: non scontrarti con te stesso o con l'avversario!</p>
+    <p>🌀 I bordi sono oltrepassabili - esci da un lato e riappari dall'altro!</p>
+  </div>
+
+  <script>
+    const GRID_SIZE = 20;
+    const CANVAS_WIDTH = 900;
+    const CANVAS_HEIGHT = 600;
+    const COLS = Math.floor(CANVAS_WIDTH / GRID_SIZE);
+    const ROWS = Math.floor(CANVAS_HEIGHT / GRID_SIZE);
+    const GAME_SPEED = 100;
+
+    let canvas, ctx;
+    let peer = null;
+    let connection = null;
+    let isHost = false;
+    let gameInterval = null;
+    let gameRunning = false;
+
+    // Game state
+    let snake1 = [];
+    let dir1 = { x: 1, y: 0 };
+    let nextDir1 = { x: 1, y: 0 };
+    let score1 = 0;
+
+    let snake2 = [];
+    let dir2 = { x: -1, y: 0 };
+    let nextDir2 = { x: -1, y: 0 };
+    let score2 = 0;
+
+    let food = { x: 0, y: 0 };
+
+    // UI Elements
+    const mainMenu = document.getElementById('main-menu');
+    const hostScreen = document.getElementById('host-screen');
+    const joinScreen = document.getElementById('join-screen');
+    const scoreboard = document.getElementById('scoreboard');
+    const gameContainer = document.getElementById('game-container');
+    const instructions = document.getElementById('instructions');
+    const connectionStatus = document.getElementById('connection-status');
+
+    // Genera un codice stanza casuale
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
+    // Inizializza PeerJS
+    function initPeer(roomCode = null) {
+      const peerId = roomCode || generateRoomCode();
+      peer = new Peer(peerId, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        }
+      });
+
+      peer.on('open', (id) => {
+        console.log('Peer ID:', id);
+        if (isHost) {
+          document.getElementById('room-code').textContent = id;
+          document.getElementById('host-status').textContent = '✅ Codice generato!';
+        }
+      });
+
+      peer.on('error', (err) => {
+        console.error('Peer error:', err);
+        if (isHost) {
+          document.getElementById('host-status').textContent = '❌ Errore di connessione';
+        } else {
+          document.getElementById('join-status').textContent = '❌ Errore di connessione';
+        }
+      });
+
+      if (isHost) {
+        peer.on('connection', (conn) => {
+          connection = conn;
+          setupConnection();
+          document.getElementById('host-status').textContent = '🎮 Giocatore connesso! Inizio partita...';
+          setTimeout(startGame, 1000);
+        });
+      }
+    }
+
+    // Setup della connessione
+    function setupConnection() {
+      connection.on('open', () => {
+        console.log('Connessione stabilita');
+        connectionStatus.className = 'connection-status connected';
+        connectionStatus.textContent = '🟢 Connesso';
+      });
+
+      connection.on('data', (data) => {
+        handleMessage(data);
+      });
+
+      connection.on('close', () => {
+        console.log('Connessione chiusa');
+        connectionStatus.className = 'connection-status disconnected';
+        connectionStatus.textContent = '🔴 Disconnesso';
+        handleDisconnect();
+      });
+
+      connection.on('error', (err) => {
+        console.error('Connection error:', err);
+      });
+    }
+
+    // Gestione messaggi
+    function handleMessage(data) {
+      if (data.type === 'gameState' && !isHost) {
+        // Il guest riceve lo stato del gioco dall'host
+        snake1 = data.snake1;
+        snake2 = data.snake2;
+        food = data.food;
+        score1 = data.score1;
+        score2 = data.score2;
+        dir1 = data.dir1;
+        dir2 = data.dir2;
+
+        document.getElementById('score-p1').textContent = score1;
+        document.getElementById('score-p2').textContent = score2;
+
+        draw();
+      } else if (data.type === 'input' && isHost) {
+        // L'host riceve l'input del guest (Player 2)
+        nextDir2 = data.direction;
+      } else if (data.type === 'gameOver') {
+        endGame(data.winner);
+      }
+    }
+
+    // Invia stato del gioco (solo host)
+    function sendGameState() {
+      if (isHost && connection && connection.open) {
+        connection.send({
+          type: 'gameState',
+          snake1, snake2, food, score1, score2, dir1, dir2
+        });
+      }
+    }
+
+    // Invia input (solo guest)
+    function sendInput(direction) {
+      if (!isHost && connection && connection.open) {
+        connection.send({
+          type: 'input',
+          direction
+        });
+      }
+    }
+
+    // Host Game
+    document.getElementById('host-btn').addEventListener('click', () => {
+      isHost = true;
+      mainMenu.classList.add('hidden');
+      hostScreen.classList.remove('hidden');
+      initPeer();
+    });
+
+    // Join Game
+    document.getElementById('join-btn').addEventListener('click', () => {
+      isHost = false;
+      mainMenu.classList.add('hidden');
+      joinScreen.classList.remove('hidden');
+    });
+
+    // Connetti a partita
+    document.getElementById('connect-btn').addEventListener('click', () => {
+      const roomCode = document.getElementById('room-code-input').value.toUpperCase().trim();
+      if (!roomCode) {
+        document.getElementById('join-status').textContent = '⚠️ Inserisci un codice';
+        return;
+      }
+
+      document.getElementById('join-status').textContent = '🔄 Connessione in corso...';
+
+      initPeer();
+
+      peer.on('open', () => {
+        connection = peer.connect(roomCode);
+        setupConnection();
+
+        connection.on('open', () => {
+          document.getElementById('join-status').textContent = '✅ Connesso! Inizio partita...';
+          setTimeout(startGame, 1000);
+        });
+
+        connection.on('error', (err) => {
+          document.getElementById('join-status').textContent = '❌ Codice non valido o partita non trovata';
+        });
+      });
+    });
+
+    // Cancel buttons
+    document.getElementById('cancel-host-btn').addEventListener('click', resetToMenu);
+    document.getElementById('cancel-join-btn').addEventListener('click', resetToMenu);
+    document.getElementById('restart-btn').addEventListener('click', resetToMenu);
+
+    function resetToMenu() {
+      if (gameInterval) clearInterval(gameInterval);
+      if (connection) connection.close();
+      if (peer) peer.destroy();
+
+      gameRunning = false;
+      peer = null;
+      connection = null;
+
+      mainMenu.classList.remove('hidden');
+      hostScreen.classList.add('hidden');
+      joinScreen.classList.add('hidden');
+      scoreboard.classList.add('hidden');
+      gameContainer.classList.add('hidden');
+      instructions.classList.add('hidden');
+      connectionStatus.className = 'connection-status';
+
+      document.getElementById('room-code-input').value = '';
+      document.getElementById('host-status').textContent = '';
+      document.getElementById('join-status').textContent = '';
+      document.getElementById('game-over').classList.remove('visible', 'winner-p1', 'winner-p2', 'draw', 'disconnected');
+    }
+
+    function handleDisconnect() {
+      if (!gameRunning) return;
+      
+      const overlay = document.getElementById('game-over');
+      const winnerText = document.getElementById('winner-text');
+      const winnerDetail = document.getElementById('winner-detail');
+
+      overlay.classList.add('disconnected');
+      winnerText.textContent = 'DISCONNESSO';
+      winnerDetail.textContent = 'L\'altro giocatore si è disconnesso';
+      overlay.classList.add('visible');
+
+      if (gameInterval) clearInterval(gameInterval);
+      gameRunning = false;
+    }
+
+    function startGame() {
+      canvas = document.getElementById('game-canvas');
+      ctx = canvas.getContext('2d');
+
+      hostScreen.classList.add('hidden');
+      joinScreen.classList.add('hidden');
+      scoreboard.classList.remove('hidden');
+      gameContainer.classList.remove('hidden');
+      instructions.classList.remove('hidden');
+
+      // Aggiorna i ruoli
+      if (isHost) {
+        document.getElementById('role-p1').textContent = 'TU (HOST)';
+        document.getElementById('role-p2').textContent = 'AVVERSARIO';
+      } else {
+        document.getElementById('role-p1').textContent = 'AVVERSARIO';
+        document.getElementById('role-p2').textContent = 'TU (GUEST)';
+      }
+
+      initGame();
+
+      if (isHost) {
+        gameRunning = true;
+        gameInterval = setInterval(gameLoop, GAME_SPEED);
+      } else {
+        gameRunning = true;
+        // Il guest solo disegna, non calcola
+      }
+
+      document.addEventListener('keydown', handleKeyPress);
+    }
+
+    function initGame() {
+      snake1 = [
+        { x: 5, y: Math.floor(ROWS / 2) },
+        { x: 4, y: Math.floor(ROWS / 2) },
+        { x: 3, y: Math.floor(ROWS / 2) }
+      ];
+      dir1 = { x: 1, y: 0 };
+      nextDir1 = { x: 1, y: 0 };
+      score1 = 0;
+
+      snake2 = [
+        { x: COLS - 6, y: Math.floor(ROWS / 2) },
+        { x: COLS - 5, y: Math.floor(ROWS / 2) },
+        { x: COLS - 4, y: Math.floor(ROWS / 2) }
+      ];
+      dir2 = { x: -1, y: 0 };
+      nextDir2 = { x: -1, y: 0 };
+      score2 = 0;
+
+      document.getElementById('score-p1').textContent = '0';
+      document.getElementById('score-p2').textContent = '0';
+
+      spawnFood();
+      draw();
+    }
+
+    function spawnFood() {
+      let validPosition = false;
+      while (!validPosition) {
+        food.x = Math.floor(Math.random() * COLS);
+        food.y = Math.floor(Math.random() * ROWS);
+        
+        validPosition = true;
+        for (let segment of snake1) {
+          if (segment.x === food.x && segment.y === food.y) {
+            validPosition = false;
+            break;
+          }
+        }
+        if (validPosition) {
+          for (let segment of snake2) {
+            if (segment.x === food.x && segment.y === food.y) {
+              validPosition = false;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    function handleKeyPress(e) {
+      if (!gameRunning) return;
+
+      if (isHost) {
+        // Host controlla Player 1 con le frecce
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (dir1.y === 0) nextDir1 = { x: 0, y: -1 };
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (dir1.y === 0) nextDir1 = { x: 0, y: 1 };
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          if (dir1.x === 0) nextDir1 = { x: -1, y: 0 };
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          if (dir1.x === 0) nextDir1 = { x: 1, y: 0 };
+        }
+      } else {
+        // Guest controlla Player 2 con le frecce
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (dir2.y === 0) {
+            const newDir = { x: 0, y: -1 };
+            nextDir2 = newDir;
+            sendInput(newDir);
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (dir2.y === 0) {
+            const newDir = { x: 0, y: 1 };
+            nextDir2 = newDir;
+            sendInput(newDir);
+          }
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          if (dir2.x === 0) {
+            const newDir = { x: -1, y: 0 };
+            nextDir2 = newDir;
+            sendInput(newDir);
+          }
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          if (dir2.x === 0) {
+            const newDir = { x: 1, y: 0 };
+            nextDir2 = newDir;
+            sendInput(newDir);
+          }
+        }
+      }
+    }
+
+    function moveSnake(snake, dir, nextDir) {
+      dir.x = nextDir.x;
+      dir.y = nextDir.y;
+
+      let newX = snake[0].x + dir.x;
+      let newY = snake[0].y + dir.y;
+
+      if (newX < 0) newX = COLS - 1;
+      if (newX >= COLS) newX = 0;
+      if (newY < 0) newY = ROWS - 1;
+      if (newY >= ROWS) newY = 0;
+
+      return { x: newX, y: newY };
+    }
+
+    function checkCollision(head, snake, otherSnake) {
+      for (let i = 0; i < snake.length - 1; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) {
+          return true;
+        }
+      }
+
+      for (let segment of otherSnake) {
+        if (head.x === segment.x && head.y === segment.y) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function gameLoop() {
+      if (!isHost) return; // Solo l'host calcola il gioco
+
+      const newHead1 = moveSnake(snake1, dir1, nextDir1);
+      const newHead2 = moveSnake(snake2, dir2, nextDir2);
+
+      const collision1 = checkCollision(newHead1, snake1, snake2);
+      const collision2 = checkCollision(newHead2, snake2, snake1);
+
+      if (collision1 && collision2) {
+        endGame('draw');
+        if (connection && connection.open) {
+          connection.send({ type: 'gameOver', winner: 'draw' });
+        }
+        return;
+      } else if (collision1) {
+        endGame('p2');
+        if (connection && connection.open) {
+          connection.send({ type: 'gameOver', winner: 'p2' });
+        }
+        return;
+      } else if (collision2) {
+        endGame('p1');
+        if (connection && connection.open) {
+          connection.send({ type: 'gameOver', winner: 'p1' });
+        }
+        return;
+      }
+
+      snake1.unshift(newHead1);
+      snake2.unshift(newHead2);
+
+      let foodEaten = false;
+      let grower = null;
+
+      if (newHead1.x === food.x && newHead1.y === food.y) {
+        score1 += 10;
+        document.getElementById('score-p1').textContent = score1;
+        foodEaten = true;
+        grower = 1;
+      } else if (newHead2.x === food.x && newHead2.y === food.y) {
+        score2 += 10;
+        document.getElementById('score-p2').textContent = score2;
+        foodEaten = true;
+        grower = 2;
+      }
+
+      if (foodEaten) {
+        spawnFood();
+      }
+
+      if (grower !== 1) snake1.pop();
+      if (grower !== 2) snake2.pop();
+
+      draw();
+      sendGameState();
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0a0a12';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * GRID_SIZE, 0);
+        ctx.lineTo(x * GRID_SIZE, CANVAS_HEIGHT);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * GRID_SIZE);
+        ctx.lineTo(CANVAS_WIDTH, y * GRID_SIZE);
+        ctx.stroke();
+      }
+
+      snake1.forEach((segment, index) => {
+        const isHead = index === 0;
+        const gradient = ctx.createLinearGradient(
+          segment.x * GRID_SIZE, 
+          segment.y * GRID_SIZE, 
+          segment.x * GRID_SIZE + GRID_SIZE, 
+          segment.y * GRID_SIZE + GRID_SIZE
+        );
+        
+        if (isHead) {
+          gradient.addColorStop(0, '#00ff88');
+          gradient.addColorStop(1, '#00cc6a');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            segment.x * GRID_SIZE + 1, 
+            segment.y * GRID_SIZE + 1, 
+            GRID_SIZE - 2, 
+            GRID_SIZE - 2
+          );
+          ctx.fillStyle = '#0a0a12';
+          ctx.fillRect(segment.x * GRID_SIZE + 5, segment.y * GRID_SIZE + 5, 3, 3);
+          ctx.fillRect(segment.x * GRID_SIZE + 12, segment.y * GRID_SIZE + 5, 3, 3);
+        } else {
+          gradient.addColorStop(0, '#00cc6a');
+          gradient.addColorStop(1, '#009952');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            segment.x * GRID_SIZE + 2, 
+            segment.y * GRID_SIZE + 2, 
+            GRID_SIZE - 4, 
+            GRID_SIZE - 4
+          );
+        }
+      });
+
+      snake2.forEach((segment, index) => {
+        const isHead = index === 0;
+        const gradient = ctx.createLinearGradient(
+          segment.x * GRID_SIZE, 
+          segment.y * GRID_SIZE, 
+          segment.x * GRID_SIZE + GRID_SIZE, 
+          segment.y * GRID_SIZE + GRID_SIZE
+        );
+        
+        if (isHead) {
+          gradient.addColorStop(0, '#ff006e');
+          gradient.addColorStop(1, '#cc0058');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            segment.x * GRID_SIZE + 1, 
+            segment.y * GRID_SIZE + 1, 
+            GRID_SIZE - 2, 
+            GRID_SIZE - 2
+          );
+          ctx.fillStyle = '#0a0a12';
+          ctx.fillRect(segment.x * GRID_SIZE + 5, segment.y * GRID_SIZE + 5, 3, 3);
+          ctx.fillRect(segment.x * GRID_SIZE + 12, segment.y * GRID_SIZE + 5, 3, 3);
+        } else {
+          gradient.addColorStop(0, '#cc0058');
+          gradient.addColorStop(1, '#990042');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(
+            segment.x * GRID_SIZE + 2, 
+            segment.y * GRID_SIZE + 2, 
+            GRID_SIZE - 4, 
+            GRID_SIZE - 4
+          );
+        }
+      });
+
+      const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(255, 217, 61, ${pulse})`;
+      ctx.beginPath();
+      ctx.arc(
+        food.x * GRID_SIZE + GRID_SIZE / 2,
+        food.y * GRID_SIZE + GRID_SIZE / 2,
+        GRID_SIZE / 2 - 2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffd93d';
+      ctx.beginPath();
+      ctx.arc(
+        food.x * GRID_SIZE + GRID_SIZE / 2,
+        food.y * GRID_SIZE + GRID_SIZE / 2,
+        GRID_SIZE / 3,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    function endGame(winner) {
+      if (gameInterval) clearInterval(gameInterval);
+      gameRunning = false;
+
+      const overlay = document.getElementById('game-over');
+      const winnerText = document.getElementById('winner-text');
+      const winnerDetail = document.getElementById('winner-detail');
+
+      overlay.classList.remove('winner-p1', 'winner-p2', 'draw', 'disconnected');
+
+      if (winner === 'draw') {
+        overlay.classList.add('draw');
+        winnerText.textContent = 'PAREGGIO!';
+        winnerDetail.textContent = 'Entrambi i giocatori si sono scontrati!';
+      } else if (winner === 'p1') {
+        overlay.classList.add('winner-p1');
+        winnerText.textContent = 'PLAYER 1 VINCE!';
+        winnerDetail.textContent = `Punteggio finale: ${score1} - ${score2}`;
+      } else if (winner === 'p2') {
+        overlay.classList.add('winner-p2');
+        winnerText.textContent = 'PLAYER 2 VINCE!';
+        winnerDetail.textContent = `Punteggio finale: ${score1} - ${score2}`;
+      }
+
+      overlay.classList.add('visible');
+    }
+  </script>
+</body>
+</html>
